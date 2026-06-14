@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { createTables } = require('./db/migrate');
+const { runMigrations } = require('./db/runMigrations');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -18,7 +18,7 @@ app.use('/api/expenses', require('./routes/expenses'));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Boot
-createTables()
+runMigrations()
   .then(() => {
     app.listen(PORT,() => console.log(`🚀 Server running on port ${PORT}`));
   })
