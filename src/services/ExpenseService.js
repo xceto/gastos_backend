@@ -25,6 +25,18 @@ class ExpenseService {
     const user = await UserRepository.findById(user_id);
     const ccClosingDay = user?.cc_closing_day ?? 20;
 
+    const formattedTotal = new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+    }).format(amount);
+
+    const baseAmount = Math.round(amount / totalInst);
+    const firstAmount = baseAmount + (amount - (baseAmount * totalInst));
+
+    const totalBonus = bonus ? parseFloat(bonus) : 0;
+    const baseBonus = totalInst > 1 ? Math.round(totalBonus / totalInst) : totalBonus;
+    const firstBonus = baseBonus + (totalBonus - (baseBonus * totalInst));
+
     let firstExpense = null;
     for (let i = 1; i <= totalInst; i++) {
       const baseYear = expDate.getFullYear();
@@ -52,19 +64,19 @@ class ExpenseService {
       
       const baseDesc = description ? description.trim() : '';
       const finalDesc = totalInst > 1
-        ? (baseDesc ? `${baseDesc} (${i}/${totalInst})` : `Cuota ${i}/${totalInst}`)
+        ? (baseDesc ? `${baseDesc} (${i}/${totalInst}) Total monto: ${formattedTotal}` : `Cuota ${i}/${totalInst} Total monto: ${formattedTotal}`)
         : baseDesc;
 
       const created = await ExpenseRepository.create({
         user_id,
-        amount,
+        amount: i === 1 ? firstAmount : baseAmount,
         description: finalDesc,
         category,
         is_shared: !!is_shared,
         date: instDate,
         month: budgetMonth,
         year: budgetYear,
-        bonus: bonus || 0,
+        bonus: i === 1 ? firstBonus : baseBonus,
         bonus_user_id: bonus_user_id || null,
         is_credit_card: isCC,
       });
