@@ -20,7 +20,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // Boot
 createTables()
   .then(() => {
-    app.listen(PORT, '0,0,0,0', () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT,() => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch(err => {
     console.error('❌ DB init failed:', err);
