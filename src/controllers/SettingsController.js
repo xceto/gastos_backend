@@ -29,11 +29,11 @@ class SettingsController {
     try {
       const { user_id, month, year, salary } = req.body;
       const userIds = req.user.partner_id ? [req.user.id, req.user.partner_id] : [req.user.id];
-      if (!userIds.includes(Number(user_id))) {
+      if (!userIds.includes(user_id)) {
         return res.status(403).json({ error: 'No autorizado para modificar el sueldo de este usuario' });
       }
       const setting = await SettingsService.upsertSalary({
-        user_id: Number(user_id),
+        user_id,
         month: Number(month),
         year: Number(year),
         salary: parseFloat(salary || 0)

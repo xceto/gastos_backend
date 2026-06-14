@@ -14,7 +14,7 @@ class ExpenseService {
   async createExpense(data, userIds) {
     const { user_id, amount, description, category, is_shared, date, bonus, bonus_user_id, installments_total, is_credit_card } = data;
 
-    if (userIds && !userIds.includes(Number(user_id))) {
+    if (userIds && !userIds.includes(user_id)) {
       throw new Error('No autorizado para crear gastos para este usuario');
     }
 
@@ -82,7 +82,7 @@ class ExpenseService {
     const expense = await ExpenseRepository.findById(id);
     if (!expense) throw new Error('Gasto no encontrado');
 
-    if (userIds && (!userIds.includes(Number(expense.user_id)) || !userIds.includes(Number(user_id)))) {
+    if (userIds && (!userIds.includes(expense.user_id) || !userIds.includes(user_id))) {
       throw new Error('No autorizado para modificar este gasto');
     }
 
@@ -125,7 +125,7 @@ class ExpenseService {
     const expense = await ExpenseRepository.findById(id);
     if (!expense) throw new Error('Gasto no encontrado');
 
-    if (userIds && !userIds.includes(Number(expense.user_id))) {
+    if (userIds && !userIds.includes(expense.user_id)) {
       throw new Error('No autorizado para eliminar este gasto');
     }
 
@@ -155,26 +155,26 @@ class ExpenseService {
     const summary = users.map(user => {
       let salary;
       if (parsedMonth) {
-        const custom = settings.find(s => Number(s.user_id) === Number(user.id));
+        const custom = settings.find(s => s.user_id === user.id);
         salary = custom ? parseFloat(custom.salary) : parseFloat(user.default_salary || 0);
       } else {
         salary = 0;
         for (let m = 1; m <= 12; m++) {
-          const custom = settings.find(s => Number(s.user_id) === Number(user.id) && s.month === m);
+          const custom = settings.find(s => s.user_id === user.id && s.month === m);
           salary += custom ? parseFloat(custom.salary) : parseFloat(user.default_salary || 0);
         }
       }
 
       const ownExpenses = expenses
-        .filter(e => Number(e.user_id) === Number(user.id) && !e.is_shared)
+        .filter(e => e.user_id === user.id && !e.is_shared)
         .reduce((sum, e) => sum + parseFloat(e.amount), 0);
         
       const sharedPaid = expenses
         .filter(e => e.is_shared)
         .reduce((sum, e) => {
           let val = 0;
-          if (Number(e.user_id) === Number(user.id)) val += parseFloat(e.amount);
-          if (Number(e.bonus_user_id) === Number(user.id)) val -= parseFloat(e.bonus || 0);
+          if (e.user_id === user.id) val += parseFloat(e.amount);
+          if (e.bonus_user_id === user.id) val -= parseFloat(e.bonus || 0);
           return sum + val;
         }, 0);
 
@@ -183,7 +183,7 @@ class ExpenseService {
       const sharedDebt = sharedPaid - sharedPerPerson;
 
       const byCategory = {};
-      expenses.filter(e => Number(e.user_id) === Number(user.id)).forEach(e => {
+      expenses.filter(e => e.user_id === user.id).forEach(e => {
         byCategory[e.category] = (byCategory[e.category] ?? 0) + parseFloat(e.amount);
       });
 
