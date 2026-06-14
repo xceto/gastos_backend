@@ -4,9 +4,9 @@ const User = require('./User');
 
 const MonthlySetting = sequelize.define('MonthlySetting', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
   user_id: {
     type: DataTypes.UUID,

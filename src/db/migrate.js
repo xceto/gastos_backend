@@ -3,14 +3,14 @@ const bcrypt = require('bcryptjs');
 
 const createTables = async () => {
   try {
-    // Drop tables in reverse dependency order to avoid FK conflicts
+    // Drop in reverse FK order
     await sequelize.query(`
       DROP TABLE IF EXISTS expenses CASCADE;
       DROP TABLE IF EXISTS monthly_settings CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
     `);
 
-    // Create users table with UUID primary key
+    // users — UUID primary key (public identifier)
     await sequelize.query(`
       CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -23,10 +23,10 @@ const createTables = async () => {
       );
     `);
 
-    // Create monthly_settings table
+    // monthly_settings — SERIAL primary key, UUID FK
     await sequelize.query(`
       CREATE TABLE monthly_settings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id SERIAL PRIMARY KEY,
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         month INT NOT NULL,
         year INT NOT NULL,
@@ -35,10 +35,10 @@ const createTables = async () => {
       );
     `);
 
-    // Create expenses table
+    // expenses — SERIAL primary key, UUID FKs
     await sequelize.query(`
       CREATE TABLE expenses (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id SERIAL PRIMARY KEY,
         user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         amount DECIMAL(12,2) NOT NULL,
         description TEXT,
@@ -55,7 +55,7 @@ const createTables = async () => {
     `);
 
     // Seed users
-    const hashAna = await bcrypt.hash('ana123', 10);
+    const hashAna     = await bcrypt.hash('ana123', 10);
     const hashClaudio = await bcrypt.hash('claudio123', 10);
 
     await sequelize.query(`
@@ -75,7 +75,7 @@ const createTables = async () => {
       WHERE name = 'Claudio';
     `);
 
-    console.log('✅ Tables created / migrated with UUID primary keys');
+    console.log('✅ Tables created / migrated (users=UUID, expenses/settings=SERIAL)');
   } catch (error) {
     console.error('❌ Migration error:', error);
     throw error;

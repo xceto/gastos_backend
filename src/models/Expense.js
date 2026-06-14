@@ -4,9 +4,9 @@ const User = require('./User');
 
 const Expense = sequelize.define('Expense', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.INTEGER,
     primaryKey: true,
+    autoIncrement: true,
   },
   user_id: {
     type: DataTypes.UUID,

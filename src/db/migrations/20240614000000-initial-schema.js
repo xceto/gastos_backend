@@ -43,10 +43,10 @@ module.exports = {
     // monthly_settings
     await queryInterface.createTable('monthly_settings', {
       id: {
-        type:         Sequelize.UUID,
-        defaultValue: Sequelize.literal('gen_random_uuid()'),
-        primaryKey:   true,
-        allowNull:    false,
+        type:          Sequelize.INTEGER,
+        primaryKey:    true,
+        autoIncrement: true,
+        allowNull:     false,
       },
       user_id: {
         type:       Sequelize.UUID,
@@ -76,10 +76,10 @@ module.exports = {
     // expenses
     await queryInterface.createTable('expenses', {
       id: {
-        type:         Sequelize.UUID,
-        defaultValue: Sequelize.literal('gen_random_uuid()'),
-        primaryKey:   true,
-        allowNull:    false,
+        type:          Sequelize.INTEGER,
+        primaryKey:    true,
+        autoIncrement: true,
+        allowNull:     false,
       },
       user_id: {
         type:       Sequelize.UUID,
