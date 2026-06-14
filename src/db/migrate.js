@@ -1,29 +1,45 @@
 const sequelize = require('./connection');
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 
 const createTables = async () => {
   try {
-    // 1. Create tables and check structure
+    // Drop tables in reverse dependency order to avoid FK conflicts
     await sequelize.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+      DROP TABLE IF EXISTS expenses CASCADE;
+      DROP TABLE IF EXISTS monthly_settings CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `);
+
+    // Create users table with UUID primary key
+    await sequelize.query(`
+      CREATE TABLE users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name VARCHAR(50) UNIQUE NOT NULL,
+        default_salary DECIMAL(12,2) DEFAULT 0,
+        cc_closing_day INT DEFAULT 20,
+        password_hash TEXT,
+        partner_id UUID REFERENCES users(id) ON DELETE SET NULL,
         created_at TIMESTAMPTZ DEFAULT now()
       );
+    `);
 
-      CREATE TABLE IF NOT EXISTS monthly_settings (
-        id SERIAL PRIMARY KEY,
-        user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    // Create monthly_settings table
+    await sequelize.query(`
+      CREATE TABLE monthly_settings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         month INT NOT NULL,
         year INT NOT NULL,
         salary DECIMAL(12,2) DEFAULT 0,
         UNIQUE(user_id, month, year)
       );
+    `);
 
-      CREATE TABLE IF NOT EXISTS expenses (
-        id SERIAL PRIMARY KEY,
-        user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    // Create expenses table
+    await sequelize.query(`
+      CREATE TABLE expenses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         amount DECIMAL(12,2) NOT NULL,
         description TEXT,
         category VARCHAR(50) NOT NULL,
@@ -31,75 +47,35 @@ const createTables = async () => {
         date DATE DEFAULT CURRENT_DATE,
         month INT NOT NULL,
         year INT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT now()
+        created_at TIMESTAMPTZ DEFAULT now(),
+        bonus DECIMAL(12,2) DEFAULT 0,
+        bonus_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        is_credit_card BOOLEAN DEFAULT false
       );
     `);
 
-    // 2. Add columns if they do not exist
-    await sequelize.query(`
-      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS bonus DECIMAL(12,2) DEFAULT 0;
-      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS bonus_user_id INT REFERENCES users(id) ON DELETE SET NULL;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS default_salary DECIMAL(12,2) DEFAULT 0;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS cc_closing_day INT DEFAULT 20;
-      ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_credit_card BOOLEAN DEFAULT false;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS partner_id INT REFERENCES users(id) ON DELETE SET NULL;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS uuid UUID UNIQUE;
-    `);
-
-    // Populate UUIDs for users that don't have one
-    const usersWithoutUuid = await sequelize.query(`
-      SELECT id FROM users WHERE uuid IS NULL;
-    `, { type: sequelize.QueryTypes.SELECT });
-
-    for (const u of usersWithoutUuid) {
-      const uId = u.id;
-      const uUuid = crypto.randomUUID();
-      await sequelize.query(`
-        UPDATE users SET uuid = :uUuid WHERE id = :uId;
-      `, { replacements: { uUuid, uId } });
-    }
-
-
-    // 3. Seed users with default passwords
+    // Seed users
     const hashAna = await bcrypt.hash('ana123', 10);
     const hashClaudio = await bcrypt.hash('claudio123', 10);
 
-    // Insert Ana if she doesn't exist
     await sequelize.query(`
-      INSERT INTO users (name, password_hash) 
-      VALUES ('Ana', :hashAna) 
+      INSERT INTO users (name, password_hash)
+      VALUES ('Ana', :hashAna), ('Claudio', :hashClaudio)
       ON CONFLICT (name) DO NOTHING;
-    `, { replacements: { hashAna } });
+    `, { replacements: { hashAna, hashClaudio } });
 
-    // Insert Claudio if he doesn't exist
+    // Link partners bidirectionally
     await sequelize.query(`
-      INSERT INTO users (name, password_hash) 
-      VALUES ('Claudio', :hashClaudio) 
-      ON CONFLICT (name) DO NOTHING;
-    `, { replacements: { hashClaudio } });
+      UPDATE users
+      SET partner_id = (SELECT id FROM users WHERE name = 'Claudio')
+      WHERE name = 'Ana';
 
-    // Update if they already existed but had no password_hash
-    await sequelize.query(`
-      UPDATE users SET password_hash = :hashAna WHERE name = 'Ana' AND password_hash IS NULL;
-    `, { replacements: { hashAna } });
-
-    await sequelize.query(`
-      UPDATE users SET password_hash = :hashClaudio WHERE name = 'Claudio' AND password_hash IS NULL;
-    `, { replacements: { hashClaudio } });
-
-    // Update partner association between Ana and Claudio
-    await sequelize.query(`
-      UPDATE users 
-      SET partner_id = (SELECT id FROM users WHERE name = 'Claudio') 
-      WHERE name = 'Ana' AND partner_id IS NULL;
-      
-      UPDATE users 
-      SET partner_id = (SELECT id FROM users WHERE name = 'Ana') 
-      WHERE name = 'Claudio' AND partner_id IS NULL;
+      UPDATE users
+      SET partner_id = (SELECT id FROM users WHERE name = 'Ana')
+      WHERE name = 'Claudio';
     `);
 
-    console.log('✅ Tables created / verified / migrated (Sequelize)');
+    console.log('✅ Tables created / migrated with UUID primary keys');
   } catch (error) {
     console.error('❌ Migration error:', error);
     throw error;

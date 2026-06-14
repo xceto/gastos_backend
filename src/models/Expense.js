@@ -4,12 +4,12 @@ const User = require('./User');
 
 const Expense = sequelize.define('Expense', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
-    autoIncrement: true,
   },
   user_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
       model: User,
@@ -53,7 +53,7 @@ const Expense = sequelize.define('Expense', {
     defaultValue: 0,
   },
   bonus_user_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: User,

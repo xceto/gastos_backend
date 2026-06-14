@@ -12,8 +12,7 @@ class UserRepository {
   }
 
   async findByUuid(uuid) {
-    return User.findOne({
-      where: { uuid },
+    return User.findByPk(uuid, {
       include: [{ model: User, as: 'Partner', attributes: ['id', 'name'] }]
     });
   }

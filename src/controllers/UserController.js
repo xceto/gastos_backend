@@ -24,7 +24,7 @@ class UserController {
   async updateSettings(req, res) {
     try {
       const { id } = req.params;
-      if (Number(id) !== req.user.id) {
+      if (id !== req.user.id) {
         return res.status(403).json({ error: 'No autorizado para modificar la configuración de otro usuario' });
       }
       const { default_salary, cc_closing_day } = req.body;

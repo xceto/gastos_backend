@@ -3,9 +3,9 @@ const sequelize = require('../db/connection');
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
-    autoIncrement: true,
   },
   name: {
     type: DataTypes.STRING(50),
@@ -25,18 +25,12 @@ const User = sequelize.define('User', {
     allowNull: true,
   },
   partner_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'users',
       key: 'id'
     }
-  },
-  uuid: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    unique: true,
-    allowNull: false,
   },
   created_at: {
     type: DataTypes.DATE,
