@@ -152,6 +152,11 @@ class ExpenseService {
 
     const sharedPerPerson = users.length > 0 ? totalShared / users.length : 0;
 
+    const shared_category_totals = {};
+    expenses.filter(e => e.is_shared).forEach(e => {
+      shared_category_totals[e.category] = (shared_category_totals[e.category] ?? 0) + parseFloat(e.amount);
+    });
+
     const summary = users.map(user => {
       let salary;
       if (parsedMonth) {
@@ -187,6 +192,44 @@ class ExpenseService {
         byCategory[e.category] = (byCategory[e.category] ?? 0) + parseFloat(e.amount);
       });
 
+      // PersonBalance calculations
+      let paid_cc = 0;
+      let paid_cash = 0;
+      expenses.forEach(e => {
+        if (e.user_id === user.id) {
+          const amt = parseFloat(e.amount || 0);
+          if (e.is_credit_card) paid_cc += amt; else paid_cash += amt;
+        }
+        if (e.bonus_user_id === user.id) {
+          const bns = parseFloat(e.bonus || 0);
+          if (e.is_credit_card) paid_cc -= bns; else paid_cash -= bns;
+        }
+      });
+
+      // MyExpensesSection calculations
+      const myExpensesList = expenses.filter(e => e.user_id === user.id);
+      
+      const my_total_amount = myExpensesList.reduce((sum, e) => {
+        let val = parseFloat(e.amount);
+        if (e.bonus_user_id === user.id) val -= parseFloat(e.bonus || 0);
+        return sum + val;
+      }, 0);
+
+      const my_own_amount = myExpensesList.filter(e => !e.is_shared).reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+      const my_shared_amount = myExpensesList.filter(e => e.is_shared).reduce((sum, e) => {
+        let val = parseFloat(e.amount);
+        if (e.bonus_user_id === user.id) val -= parseFloat(e.bonus || 0);
+        return sum + val;
+      }, 0);
+
+      const my_category_totals = {};
+      myExpensesList.forEach(e => {
+        let val = parseFloat(e.amount);
+        if (e.bonus_user_id === user.id) val -= parseFloat(e.bonus || 0);
+        my_category_totals[e.category] = (my_category_totals[e.category] ?? 0) + val;
+      });
+
       return {
         user_id: user.id,
         name: user.name,
@@ -198,6 +241,12 @@ class ExpenseService {
         effective_cost: effectiveCost,
         balance,
         by_category: byCategory,
+        paid_cc,
+        paid_cash,
+        my_total_amount,
+        my_own_amount,
+        my_shared_amount,
+        my_category_totals,
       };
     });
 
@@ -206,6 +255,7 @@ class ExpenseService {
       year: parsedYear,
       total_shared: totalShared,
       shared_per_person: sharedPerPerson,
+      shared_category_totals,
       persons: summary,
     };
   }
