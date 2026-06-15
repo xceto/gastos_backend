@@ -63,6 +63,11 @@ const Expense = sequelize.define('Expense', {
   is_credit_card: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  own_amount: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: true,
+    defaultValue: null,
   }
 }, {
   tableName: 'expenses',

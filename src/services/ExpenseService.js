@@ -12,7 +12,7 @@ class ExpenseService {
   }
 
   async createExpense(data, userIds) {
-    const { user_id, amount, description, category, is_shared, date, bonus, bonus_user_id, installments_total, is_credit_card } = data;
+    const { user_id, amount, description, category, is_shared, date, bonus, bonus_user_id, installments_total, is_credit_card, own_amount } = data;
 
     if (userIds && !userIds.includes(user_id)) {
       throw new Error('No autorizado para crear gastos para este usuario');
@@ -79,6 +79,7 @@ class ExpenseService {
         bonus: i === 1 ? firstBonus : baseBonus,
         bonus_user_id: bonus_user_id || null,
         is_credit_card: isCC,
+        own_amount: is_shared && own_amount != null ? parseFloat(own_amount) / totalInst : null,
       });
 
       if (i === 1) {
@@ -89,7 +90,7 @@ class ExpenseService {
   }
 
   async updateExpense(id, data, userIds) {
-    const { user_id, amount, description, category, is_shared, date, bonus, bonus_user_id, is_credit_card } = data;
+    const { user_id, amount, description, category, is_shared, date, bonus, bonus_user_id, is_credit_card, own_amount } = data;
 
     const expense = await ExpenseRepository.findById(id);
     if (!expense) throw new Error('Gasto no encontrado');
@@ -129,7 +130,8 @@ class ExpenseService {
       year: budgetYear,
       bonus: bonus || 0,
       bonus_user_id: bonus_user_id || null,
-      is_credit_card: isCC
+      is_credit_card: isCC,
+      own_amount: is_shared && own_amount != null && own_amount !== '' ? parseFloat(own_amount) : null,
     });
   }
 
@@ -190,14 +192,42 @@ class ExpenseService {
         .filter(e => e.is_shared)
         .reduce((sum, e) => {
           let val = 0;
-          if (e.user_id === user.id) val += parseFloat(e.amount);
+          if (e.user_id === user.id) {
+            // how much of this shared expense is charged to the payer
+            const ownAmt = e.own_amount != null ? parseFloat(e.own_amount) : parseFloat(e.amount) / 2;
+            val += parseFloat(e.amount) - parseFloat(e.bonus || 0); // total they fronted
+            // but sharedPaid represents only what they actually put in
+            // we keep the full fronted amount and adjust sharedPerPerson in balance
+          }
           if (e.bonus_user_id === user.id) val -= parseFloat(e.bonus || 0);
           return sum + val;
         }, 0);
 
-      const effectiveCost = ownExpenses + sharedPerPerson;
+      // Effective cost: own expenses + my real share of shared expenses
+      const mySharedCost = expenses
+        .filter(e => e.is_shared)
+        .reduce((sum, e) => {
+          let share;
+          if (e.own_amount != null) {
+            // custom split
+            share = e.user_id === user.id
+              ? parseFloat(e.own_amount)
+              : parseFloat(e.amount) - parseFloat(e.own_amount);
+          } else {
+            // 50/50 default
+            share = (parseFloat(e.amount) - parseFloat(e.bonus || 0)) / 2;
+          }
+          return sum + share;
+        }, 0);
+
+      // sharedPaid = total money user actually fronted for shared expenses
+      const sharedFronted = expenses
+        .filter(e => e.is_shared && e.user_id === user.id)
+        .reduce((sum, e) => sum + parseFloat(e.amount) - parseFloat(e.bonus || 0), 0);
+
+      const sharedDebt = sharedFronted - mySharedCost;
+      const effectiveCost = ownExpenses + mySharedCost;
       const balance = salary - effectiveCost;
-      const sharedDebt = sharedPaid - sharedPerPerson;
 
       const byCategory = {};
       expenses.filter(e => e.user_id === user.id).forEach(e => {
@@ -247,8 +277,8 @@ class ExpenseService {
         name: user.name,
         salary,
         own_expenses: ownExpenses,
-        shared_paid: sharedPaid,
-        shared_owed: sharedPerPerson,
+        shared_paid: sharedFronted,
+        shared_owed: mySharedCost,
         shared_debt: sharedDebt,
         effective_cost: effectiveCost,
         balance,
