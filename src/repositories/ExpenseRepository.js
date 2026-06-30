@@ -73,6 +73,18 @@ class ExpenseRepository {
     await expense.update(data);
     return this.findById(id);
   }
+
+  /** All shared expenses ever for the given pair of users. Used for accumulated debt. */
+  async findAllSharedBetween(userIds) {
+    const list = await Expense.findAll({
+      where: {
+        is_shared: true,
+        user_id: userIds,
+      },
+      attributes: ['user_id', 'amount', 'bonus', 'bonus_user_id', 'own_amount', 'month', 'year'],
+    });
+    return list.map(e => e.get({ plain: true }));
+  }
 }
 
 module.exports = new ExpenseRepository();
