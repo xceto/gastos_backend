@@ -16,9 +16,22 @@ class PaymentController {
 
       const userIds = [currentUser.id, currentUser.partner_id];
 
+      const { month, year } = req.query;
+      let maxDate = null;
+      let selectedMonth = null;
+      let selectedYear = null;
+
+      if (month && year) {
+        selectedMonth = parseInt(month);
+        selectedYear = parseInt(year);
+        // Calculate the last day of the selected month
+        const lastDay = new Date(selectedYear, selectedMonth, 0);
+        maxDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+      }
+
       const [payments, allShared] = await Promise.all([
-        DebtPaymentRepository.findBetweenUsers(currentUser.id, currentUser.partner_id),
-        ExpenseRepository.findAllSharedBetween(userIds),
+        DebtPaymentRepository.findBetweenUsers(currentUser.id, currentUser.partner_id, maxDate),
+        ExpenseRepository.findAllSharedBetween(userIds, selectedMonth, selectedYear),
       ]);
 
       // Compute accumulated debt per user from all-time shared expenses

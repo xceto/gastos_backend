@@ -74,13 +74,21 @@ class ExpenseRepository {
     return this.findById(id);
   }
 
-  /** All shared expenses ever for the given pair of users. Used for accumulated debt. */
-  async findAllSharedBetween(userIds) {
+  /** All shared expenses ever or up to a specific month/year for the given pair of users. Used for accumulated debt. */
+  async findAllSharedBetween(userIds, maxMonth = null, maxYear = null) {
+    const where = {
+      is_shared: true,
+      user_id: userIds,
+    };
+    if (maxMonth && maxYear) {
+      const { Op } = require('sequelize');
+      where[Op.or] = [
+        { year: { [Op.lt]: maxYear } },
+        { year: maxYear, month: { [Op.lte]: maxMonth } }
+      ];
+    }
     const list = await Expense.findAll({
-      where: {
-        is_shared: true,
-        user_id: userIds,
-      },
+      where,
       attributes: ['user_id', 'amount', 'bonus', 'bonus_user_id', 'own_amount', 'month', 'year'],
     });
     return list.map(e => e.get({ plain: true }));

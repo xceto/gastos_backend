@@ -5,14 +5,18 @@ class DebtPaymentRepository {
   /**
    * All payments between two users (in either direction).
    */
-  findBetweenUsers(userIdA, userIdB) {
+  findBetweenUsers(userIdA, userIdB, maxDate = null) {
+    const where = {
+      [Op.or]: [
+        { from_user_id: userIdA, to_user_id: userIdB },
+        { from_user_id: userIdB, to_user_id: userIdA },
+      ],
+    };
+    if (maxDate) {
+      where.date = { [Op.lte]: maxDate };
+    }
     return DebtPayment.findAll({
-      where: {
-        [Op.or]: [
-          { from_user_id: userIdA, to_user_id: userIdB },
-          { from_user_id: userIdB, to_user_id: userIdA },
-        ],
-      },
+      where,
       order: [['date', 'DESC'], ['created_at', 'DESC']],
     });
   }
