@@ -20,6 +20,11 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     defaultValue: 20,
   },
+  active_categories: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+  },
   password_hash: {
     type: DataTypes.STRING,
     allowNull: true,

@@ -27,11 +27,16 @@ class UserController {
       if (id !== req.user.id) {
         return res.status(403).json({ error: 'No autorizado para modificar la configuración de otro usuario' });
       }
-      const { default_salary, cc_closing_day } = req.body;
-      const updated = await SettingsService.updateUserSettings(id, {
+      const { default_salary, cc_closing_day, active_categories } = req.body;
+      const updatePayload = {
         default_salary: parseFloat(default_salary || 0),
-        cc_closing_day: parseInt(cc_closing_day || 20)
-      });
+        cc_closing_day: parseInt(cc_closing_day || 20),
+      };
+      // active_categories: array of category keys, or null (= all active)
+      if (active_categories !== undefined) {
+        updatePayload.active_categories = active_categories;
+      }
+      const updated = await SettingsService.updateUserSettings(id, updatePayload);
       if (!updated) {
         return res.status(404).json({ error: 'Usuario no encontrado' });
       }
