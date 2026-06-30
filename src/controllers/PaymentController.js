@@ -176,7 +176,6 @@ class PaymentController {
   async createPayment(req, res) {
     try {
       const { to_user_id, amount, date, note } = req.body;
-      const from_user_id = req.user.id;
 
       if (!to_user_id || !amount || parseFloat(amount) <= 0) {
         return res.status(400).json({ error: 'Datos inválidos' });
@@ -187,6 +186,8 @@ class PaymentController {
       if (!partnerIds.includes(to_user_id)) {
         return res.status(403).json({ error: 'No autorizado' });
       }
+
+      const from_user_id = to_user_id === req.user.id ? req.user.partner_id : req.user.id;
 
       const payment = await DebtPaymentRepository.create({
         from_user_id,
