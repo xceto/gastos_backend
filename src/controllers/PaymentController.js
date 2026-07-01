@@ -24,9 +24,15 @@ class PaymentController {
       if (month && year) {
         selectedMonth = parseInt(month);
         selectedYear = parseInt(year);
-        // Calculate the last day of the selected month
-        const lastDay = new Date(selectedYear, selectedMonth, 0);
-        maxDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+        const budgetStartDay = currentUser.budget_start_day || 1;
+        if (budgetStartDay > 1) {
+          const endDay = budgetStartDay - 1;
+          maxDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+        } else {
+          // Calculate the last day of the selected month
+          const lastDay = new Date(selectedYear, selectedMonth, 0);
+          maxDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+        }
       }
 
       const [payments, allShared] = await Promise.all([
@@ -96,6 +102,7 @@ class PaymentController {
 
       // Apply payments: from_user paid to_user → reduces their debt / builds credit
       let paymentBalance = 0; // positive = currentUser paid partner (reduces debt)
+      const budgetStartDay = currentUser.budget_start_day || 1;
       for (const p of payments) {
         const pAmt = parseFloat(p.amount);
         if (p.from_user_id === currentUser.id) {
@@ -106,8 +113,16 @@ class PaymentController {
 
         // Group payments for monthly breakdown
         const pDate = new Date(p.date + 'T00:00:00');
-        const pMonth = pDate.getMonth() + 1;
-        const pYear = pDate.getFullYear();
+        let pMonth = pDate.getMonth() + 1;
+        let pYear = pDate.getFullYear();
+
+        if (budgetStartDay > 1 && pDate.getDate() >= budgetStartDay) {
+          pMonth += 1;
+          if (pMonth > 12) {
+            pMonth = 1;
+            pYear += 1;
+          }
+        }
         const key = `${pYear}-${pMonth}`;
 
         if (!monthlyBreakdownData[key]) {

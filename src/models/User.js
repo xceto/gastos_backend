@@ -20,6 +20,10 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     defaultValue: 20,
   },
+  budget_start_day: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+  },
   active_categories: {
     type: DataTypes.JSON,
     allowNull: true,

@@ -27,10 +27,11 @@ class UserController {
       if (id !== req.user.id) {
         return res.status(403).json({ error: 'No autorizado para modificar la configuración de otro usuario' });
       }
-      const { default_salary, cc_closing_day, active_categories } = req.body;
+      const { default_salary, cc_closing_day, budget_start_day, active_categories } = req.body;
       const updatePayload = {
         default_salary: parseFloat(default_salary || 0),
         cc_closing_day: parseInt(cc_closing_day || 20),
+        budget_start_day: parseInt(budget_start_day || 1),
       };
       // active_categories: array of category keys, or null (= all active)
       if (active_categories !== undefined) {

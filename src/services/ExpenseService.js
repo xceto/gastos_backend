@@ -3,9 +3,9 @@ const UserRepository = require('../repositories/UserRepository');
 const MonthlySettingRepository = require('../repositories/MonthlySettingRepository');
 
 class ExpenseService {
-  async getExpenses(month, year, userIds) {
+  async getExpenses(month, year, userIds, budgetStartDay = 1) {
     if (month) {
-      return ExpenseRepository.findByMonthAndYear(parseInt(month), parseInt(year), userIds);
+      return ExpenseRepository.findByBudgetPeriod(parseInt(month), parseInt(year), budgetStartDay, userIds);
     } else {
       return ExpenseRepository.findByYear(parseInt(year), userIds);
     }
@@ -24,6 +24,7 @@ class ExpenseService {
 
     const user = await UserRepository.findById(user_id);
     const ccClosingDay = user?.cc_closing_day ?? 20;
+    const budgetStartDay = user?.budget_start_day ?? 1;
 
     const formattedTotal = new Intl.NumberFormat('es-CL', {
       style: 'currency',
@@ -54,12 +55,19 @@ class ExpenseService {
       let budgetMonth = calendarMonth;
       let budgetYear = calendarYear;
       
-      if (isCC && instDate.getDate() > ccClosingDay) {
-        budgetMonth = calendarMonth + 1;
-        if (budgetMonth > 12) {
-          budgetMonth = 1;
-          budgetYear = calendarYear + 1;
+      if (isCC) {
+        if (instDate.getDate() > ccClosingDay) {
+          budgetMonth = calendarMonth + 1;
         }
+      } else {
+        if (budgetStartDay > 1 && instDate.getDate() >= budgetStartDay) {
+          budgetMonth = calendarMonth + 1;
+        }
+      }
+
+      if (budgetMonth > 12) {
+        budgetMonth = 1;
+        budgetYear = calendarYear + 1;
       }
       
       const baseDesc = description ? description.trim() : '';
@@ -104,6 +112,7 @@ class ExpenseService {
 
     const user = await UserRepository.findById(user_id);
     const ccClosingDay = user?.cc_closing_day ?? 20;
+    const budgetStartDay = user?.budget_start_day ?? 1;
 
     const calendarMonth = expDate.getMonth() + 1;
     const calendarYear = expDate.getFullYear();
@@ -111,12 +120,19 @@ class ExpenseService {
     let budgetMonth = calendarMonth;
     let budgetYear = calendarYear;
     
-    if (isCC && expDate.getDate() > ccClosingDay) {
-      budgetMonth = calendarMonth + 1;
-      if (budgetMonth > 12) {
-        budgetMonth = 1;
-        budgetYear = calendarYear + 1;
+    if (isCC) {
+      if (expDate.getDate() > ccClosingDay) {
+        budgetMonth = calendarMonth + 1;
       }
+    } else {
+      if (budgetStartDay > 1 && expDate.getDate() >= budgetStartDay) {
+        budgetMonth = calendarMonth + 1;
+      }
+    }
+
+    if (budgetMonth > 12) {
+      budgetMonth = 1;
+      budgetYear = calendarYear + 1;
     }
 
     return ExpenseRepository.update(id, {
@@ -146,14 +162,14 @@ class ExpenseService {
     return ExpenseRepository.delete(id);
   }
 
-  async getSummary(month, year, userIds) {
+  async getSummary(month, year, userIds, budgetStartDay = 1) {
     const parsedYear = parseInt(year);
     const parsedMonth = month ? parseInt(month) : null;
 
     const [users, expenses, settings] = await Promise.all([
       UserRepository.findByIds(userIds),
       parsedMonth 
-        ? ExpenseRepository.findByMonthAndYear(parsedMonth, parsedYear, userIds)
+        ? ExpenseRepository.findByBudgetPeriod(parsedMonth, parsedYear, budgetStartDay, userIds)
         : ExpenseRepository.findByYear(parsedYear, userIds),
       parsedMonth
         ? MonthlySettingRepository.findByMonthAndYear(parsedMonth, parsedYear, userIds)

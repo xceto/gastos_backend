@@ -5,7 +5,8 @@ class ExpenseController {
     try {
       const { month, year } = req.query;
       const userIds = req.user.partner_id ? [req.user.id, req.user.partner_id] : [req.user.id];
-      const data = await ExpenseService.getExpenses(month, year, userIds);
+      const budgetStartDay = req.user.budget_start_day || 1;
+      const data = await ExpenseService.getExpenses(month, year, userIds, budgetStartDay);
       res.json(data);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -54,7 +55,8 @@ class ExpenseController {
     try {
       const { month, year } = req.query;
       const userIds = req.user.partner_id ? [req.user.id, req.user.partner_id] : [req.user.id];
-      const summary = await ExpenseService.getSummary(month, year, userIds);
+      const budgetStartDay = req.user.budget_start_day || 1;
+      const summary = await ExpenseService.getSummary(month, year, userIds, budgetStartDay);
       res.json(summary);
     } catch (error) {
       res.status(500).json({ error: error.message });
