@@ -365,21 +365,13 @@ class ExpenseService {
           .filter(e => e.user_id === user.id && !e.is_shared)
           .reduce((sum, e) => sum + parseFloat(e.amount), 0);
 
-        const mySharedCost = periodExpenses
-          .filter(e => e.is_shared)
-          .reduce((sum, e) => {
-            let share;
-            if (e.own_amount != null) {
-              share = e.user_id === user.id
-                ? parseFloat(e.own_amount)
-                : parseFloat(e.amount) - parseFloat(e.own_amount);
-            } else {
-              share = (parseFloat(e.amount) - parseFloat(e.bonus || 0)) / 2;
-            }
-            return sum + share;
-          }, 0);
+        // Use actual cash fronted (not theoretical share) so debt owed by partner
+        // doesn't inflate the balance — that money isn't in the user's pocket yet.
+        const sharedFronted = periodExpenses
+          .filter(e => e.is_shared && e.user_id === user.id)
+          .reduce((sum, e) => sum + parseFloat(e.amount) - parseFloat(e.bonus || 0), 0);
 
-        accumulated += salary - (ownExpenses + mySharedCost);
+        accumulated += salary - (ownExpenses + sharedFronted);
       }
 
       return { user_id: user.id, name: user.name, accumulated_balance: Math.round(accumulated) };
