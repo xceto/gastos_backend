@@ -317,6 +317,76 @@ class ExpenseService {
       persons: summary,
     };
   }
+  /**
+   * Computes the accumulated balance across all months up to today.
+   * accumulated_balance = sum of (salary - effective_cost) for each month with data.
+   */
+  async getAccumulatedBalance(userIds) {
+    const now = new Date();
+    const currentYear  = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const [users, allExpenses, allSettings] = await Promise.all([
+      UserRepository.findByIds(userIds),
+      ExpenseRepository.findAll(userIds),
+      MonthlySettingRepository.findAll(userIds),
+    ]);
+
+    // Collect all unique month/year keys present in expenses or settings
+    const periodSet = new Set();
+    allExpenses.forEach(e => {
+      if (e.year < currentYear || (e.year === currentYear && e.month <= currentMonth)) {
+        periodSet.add(`${e.year}-${e.month}`);
+      }
+    });
+    allSettings.forEach(s => {
+      if (s.year < currentYear || (s.year === currentYear && s.month <= currentMonth)) {
+        periodSet.add(`${s.year}-${s.month}`);
+      }
+    });
+
+    // For each user, accumulate balance across all periods
+    const result = users.map(user => {
+      let accumulated = 0;
+
+      for (const key of periodSet) {
+        const [yearStr, monthStr] = key.split('-');
+        const y = parseInt(yearStr);
+        const m = parseInt(monthStr);
+
+        // Salary for this period
+        const setting = allSettings.find(s => s.user_id === user.id && s.month === m && s.year === y);
+        const salary = setting ? parseFloat(setting.salary) : parseFloat(user.default_salary || 0);
+
+        // Expenses for this period
+        const periodExpenses = allExpenses.filter(e => e.month === m && e.year === y);
+
+        const ownExpenses = periodExpenses
+          .filter(e => e.user_id === user.id && !e.is_shared)
+          .reduce((sum, e) => sum + parseFloat(e.amount), 0);
+
+        const mySharedCost = periodExpenses
+          .filter(e => e.is_shared)
+          .reduce((sum, e) => {
+            let share;
+            if (e.own_amount != null) {
+              share = e.user_id === user.id
+                ? parseFloat(e.own_amount)
+                : parseFloat(e.amount) - parseFloat(e.own_amount);
+            } else {
+              share = (parseFloat(e.amount) - parseFloat(e.bonus || 0)) / 2;
+            }
+            return sum + share;
+          }, 0);
+
+        accumulated += salary - (ownExpenses + mySharedCost);
+      }
+
+      return { user_id: user.id, name: user.name, accumulated_balance: Math.round(accumulated) };
+    });
+
+    return result;
+  }
 }
 
 module.exports = new ExpenseService();

@@ -62,6 +62,16 @@ class ExpenseController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  async getAccumulatedBalance(req, res) {
+    try {
+      const userIds = req.user.partner_id ? [req.user.id, req.user.partner_id] : [req.user.id];
+      const data = await ExpenseService.getAccumulatedBalance(userIds);
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 module.exports = new ExpenseController();

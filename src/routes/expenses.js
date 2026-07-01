@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.get('/', ExpenseController.getExpenses);
 router.post('/', ExpenseController.createExpense);
 router.get('/summary', ExpenseController.getSummary);
+router.get('/accumulated-balance', ExpenseController.getAccumulatedBalance);
 router.put('/:id', ExpenseController.updateExpense);
 router.delete('/:id', ExpenseController.deleteExpense);
 

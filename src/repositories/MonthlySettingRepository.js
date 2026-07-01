@@ -37,6 +37,15 @@ class MonthlySettingRepository {
       include: [{ model: User, as: 'User', attributes: ['id', 'name'] }]
     });
   }
+
+  async findAll(userIds = null) {
+    const where = {};
+    if (userIds) {
+      where.user_id = userIds;
+    }
+    const list = await MonthlySetting.findAll({ where });
+    return list.map(s => s.get({ plain: true }));
+  }
 }
 
 module.exports = new MonthlySettingRepository();

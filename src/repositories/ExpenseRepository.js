@@ -115,6 +115,18 @@ class ExpenseRepository {
     return list.map(item => this.flatten(item));
   }
 
+  async findAll(userIds = null) {
+    const where = {};
+    if (userIds) {
+      where.user_id = userIds;
+    }
+    const list = await Expense.findAll({
+      where,
+      attributes: ['user_id', 'amount', 'bonus', 'bonus_user_id', 'own_amount', 'month', 'year', 'is_shared', 'is_credit_card'],
+    });
+    return list.map(e => e.get({ plain: true }));
+  }
+
   async update(id, data) {
     const expense = await Expense.findByPk(id);
     if (!expense) return null;
