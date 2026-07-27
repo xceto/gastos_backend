@@ -18,7 +18,9 @@ class ExpenseService {
       throw new Error('No autorizado para crear gastos para este usuario');
     }
 
-    const expDate = date ? new Date(date) : new Date();
+    const expDate = date
+      ? new Date(date.includes('T') ? date : `${date}T12:00:00`)
+      : new Date();
     const totalInst = installments_total ? parseInt(installments_total) : 1;
     const isCC = !!is_credit_card;
 
@@ -107,7 +109,9 @@ class ExpenseService {
       throw new Error('No autorizado para modificar este gasto');
     }
 
-    const expDate = date ? new Date(date) : new Date();
+    const expDate = date
+      ? new Date(date.includes('T') ? date : `${date}T12:00:00`)
+      : new Date();
     const isCC = !!is_credit_card;
 
     const user = await UserRepository.findById(user_id);

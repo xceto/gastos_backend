@@ -15,6 +15,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/categories', require('./routes/categories'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
