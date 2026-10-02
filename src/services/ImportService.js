@@ -48,12 +48,22 @@ function suggestCategory(rowDesc, existingWithCats) {
   return best;
 }
 
+function normalizeDate(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d.slice(0, 10);
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return String(d).slice(0, 10);
+}
+
 class ImportService {
   /**
-   * Compare a list of parsed rows against the database.
+   * Compare a list of parsed rows against the database using cardinality matching.
    *
    * Each row must have:
    *   { date: 'YYYY-MM-DD', amount: Number, description: String }
+   *
+   * A row is marked as duplicate only if there is an unconsumed expense in the database
+   * with the exact same date, normalized description, and amount (within ±AMOUNT_TOLERANCE).
    *
    * Returns:
    *   {
@@ -74,17 +84,43 @@ class ImportService {
     const newExpenses = [];
     const possibleDuplicates = [];
 
+    // Track consumed existing expenses so multiple occurrences of the same transaction
+    // on the same date can be accurately matched without false positives.
+    const consumedExistingIndices = new Set();
+
     for (const row of rows) {
-      const amountMatch = existing.find((e) =>
-        Math.abs(parseFloat(e.amount) - parseFloat(row.amount)) <= AMOUNT_TOLERANCE
-      );
+      const rowDate = normalizeDate(row.date);
+      const rowDescNorm = normalizeDesc(row.description);
+      const rowAmount = parseFloat(row.amount);
+
+      let matchedIndex = -1;
+      let matchedExpense = null;
+
+      for (let i = 0; i < existing.length; i++) {
+        if (consumedExistingIndices.has(i)) continue;
+
+        const e = existing[i];
+        const eDate = normalizeDate(e.date);
+        const eDescNorm = normalizeDesc(e.description);
+        const eAmount = parseFloat(e.amount);
+
+        const isDateMatch = eDate === rowDate;
+        const isDescMatch = eDescNorm === rowDescNorm;
+        const isAmountMatch = Math.abs(eAmount - rowAmount) <= AMOUNT_TOLERANCE;
+
+        if (isDateMatch && isDescMatch && isAmountMatch) {
+          matchedIndex = i;
+          matchedExpense = e;
+          break;
+        }
+      }
 
       const suggested = suggestCategory(row.description, existing);
-
       const enriched = { ...row, suggestedCategory: suggested };
 
-      if (amountMatch) {
-        possibleDuplicates.push({ ...enriched, matchedDate: amountMatch.date });
+      if (matchedIndex !== -1) {
+        consumedExistingIndices.add(matchedIndex);
+        possibleDuplicates.push({ ...enriched, matchedDate: matchedExpense.date });
       } else {
         newExpenses.push(enriched);
       }
